@@ -4,7 +4,7 @@ import random
 import numpy as np
 
 
-SEED = 0#2026
+SEED = 0
 
 
 MAX_EPISODE_LEN = 1000
@@ -111,7 +111,15 @@ def make_env(env_id, seed = 0):
     return _f
 
 class Env:
-    def __init__(self, env_id, num_env = 1, action_select = 'argmax', reward_method = 'basic',reward_scale = 1e-2):
+    def __init__(self, env_id : str, num_env : int = 1, action_select : str = 'argmax', reward_method : str = 'basic',reward_scale : float = 1e-2):
+        """
+        This class is a gym environment wrapper that handles multiple environments.
+        env_id : str : environment id
+        num_env : int : number of environments
+        action_select : str : action selection method
+        reward_method : str : reward method
+        reward_scale : float : reward
+        """
         self.num_envs = num_env
         self.env = gym.make(env_id)
         self.state_dim = self.env.observation_space.shape[0]
@@ -130,27 +138,13 @@ class Env:
         self.states, self.action, self.rewards, self.timesteps, self.rtg = self._init_output(f_states)
         self._init_return()
 
-
-    def step(self, action_dist, epoch):
-        action = self.selector(action_dist)
-        if self.use_mean:
-            action = action_dist.mean.reshape(self.num_envs, -1, self.act_dim)[:, -1]
-        #action = action.clamp(*self.action_range)
-        states, rewards, done, _, info = self.env.step(action)
-        states = (
-            torch.from_numpy(states).to(device=device).reshape(self.num_envs, -1, self.state_dim)
-        )
-        self._process(epoch)
-        self.states = torch.cat([self.states, states], dim=1)
-        self.rewards[:, - 1] = torch.tensor(rewards).to(device=device).reshape(self.num_envs, 1)
-        self.action[:, -1] = action
-        pred_return = self.reward[:, -1]#self.reward_method(self.rtg[:, -1], rewards, self.rewards_scale, self.rewards)
-        self.rtg = torch.cat(
-            [self.rtg, pred_return.reshape(self.num_envs, -1, 1)], dim=1
-        )
-        return self.states, self.action, self.rewards, self.rtg, self.timesteps, done
     
-    def step_(self, action_dist, epoch):
+    def step(self, action_dist : int, epoch : int):
+        """
+        Step the environment forward.
+        action_dist : torch.Tensor : action distribution
+        epoch : int : current epoch
+        """
         action = self.selector(action_dist)
         if self.use_mean:
             action = action_dist.mean.reshape(self.num_envs, -1, self.act_dim)[:, -1]
@@ -159,7 +153,6 @@ class Env:
         states = (
             torch.from_numpy(states).to(device=device).reshape(self.num_envs, -1, self.state_dim)
         )
-        #self._process(epoch)
         self.states = torch.cat([states], dim=1)
         self.rewards[:, -1] = torch.tensor(rewards).to(device=device).reshape(self.num_envs, 1)
         self.action[:, -1] = action
@@ -229,6 +222,9 @@ class Env:
 
 
     def reset(self):
+        """
+        reset the environment
+        """
         state = self._reset_env()
         self.states = (
         torch.from_numpy(state)
@@ -239,6 +235,3 @@ class Env:
         self._init_return()
         return self.states, self.action, self.rtg.float(), self.timesteps
     
-
-
-

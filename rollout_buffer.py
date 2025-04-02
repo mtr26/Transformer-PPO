@@ -5,12 +5,17 @@ import numpy as np
 DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 class RolloutBuffer:
-    def __init__(self, buffer_size, state_dim, action_dim):
+    """
+    Rollout Buffer for storing experiences.
+    buffer_size : int : size of the buffer
+    state_dim : int : dimension of the state space
+    action_dim : int : dimension of the action space
+    """
+    def __init__(self, buffer_size : int, state_dim : int, action_dim : int):
         self.buffer_size = buffer_size
         self.state_dim = state_dim
         self.action_dim = action_dim
 
-        # Initialisation des buffers pour les états, actions, récompenses, etc.
         self.states = [0]*self.buffer_size
         self.actions = [0]*self.buffer_size
         self.rewards = [0]*self.buffer_size
@@ -20,11 +25,13 @@ class RolloutBuffer:
         self.timestep = [0]*self.buffer_size
         self.great_action = [0]*self.buffer_size
 
-        # Indice du dernier élément dans le buffer
         self.index = 0
         self.full = False
 
     def reset(self):
+        """
+        Reset the buffer.
+        """
         self.states = [0]*self.buffer_size
         self.actions = [0]*self.buffer_size
         self.rewards = [0]*self.buffer_size
@@ -37,6 +44,17 @@ class RolloutBuffer:
         self.full = False
 
     def add_experience(self, state, action, reward, next_state, done, rtg, timestep, great_action):
+        """
+        Add an experience to the buffer.
+        state : torch.Tensor : state
+        action : torch.Tensor : action
+        reward : float : reward
+        next_state : torch.Tensor : next state
+        done : bool : episode done
+        rtg : float : return to go
+        timestep : int : timestep
+        great_action : int : great action
+        """
         self.states[self.index] = state
         self.actions[self.index] = action
         self.rewards[self.index] = reward
@@ -46,12 +64,15 @@ class RolloutBuffer:
         self.timestep[self.index] = timestep
         self.great_action[self.index] = great_action
 
-        # Met à jour l'indice et le drapeau indiquant si le buffer est plein
         self.index = (self.index + 1) % self.buffer_size
         if self.index == 0:
             self.full = True
 
-    def __get_sample__(self, indice):
+    def __get_sample__(self, indice : int):
+        """
+        Get a sample from the buffer.
+        indice : int : index of the sample
+        """
         batch = {
             'states': self.states[indice],
             'actions': self.actions[indice],
@@ -65,11 +86,18 @@ class RolloutBuffer:
         return batch
     
     def __generate__(self):
+        """
+        Generate a random index.
+        """
         n = np.random.randint(0, self.index if not self.full else self.buffer_size)
         return n
     
 
-    def get_batchs(self, batch_size):
+    def get_batchs(self, batch_size : int):
+        """
+        Get a batch of samples from the buffer.
+        batch_size : int : size of the
+        """
         g = [self.__get_sample__(np.random.randint(0, self.index if not self.full else self.buffer_size)) for i in range(batch_size)]
         st = [i['states'].tolist() for i in g]
         ac = [i['actions'].tolist() for i in g]
@@ -96,4 +124,7 @@ class RolloutBuffer:
         
 
     def get_batch(self):
+        """
+        Get a sample from the buffer.
+        """
         return self.__get_sample__(self.__generate__())
